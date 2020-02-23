@@ -1,0 +1,59 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: This stack create ECS Fargate Cluster
+Parameters:
+  Environment:
+    Type: String
+    Description: Environment Name (DEV/QA/UAT/PROD/PREPROD/DR/DR1)
+    #AllowedValues: [DEV, QA, UAT, PROD, PREPROD, DR]
+    Default: DEV
+  Platform:
+    Type: String
+    #AllowedValues: []
+    Default: ARROW
+    Description: Platform Name    
+  BU:
+    Type: String
+    Default: 'ORG
+    Description: Business Unit
+  SupportGroup:
+    Type: String
+    Default: 'IM
+    Description: SupportGroup Name
+    
+Mappings:
+  ApplicationIdentity:
+    ACFS:
+      AppID: Some ID for identifying the cluster
+    
+
+Resources:
+  ECSCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Sub ${Environment}-${Platform}-ECS-CLUSTER-01
+      ClusterSettings:
+       - Name: containerInsights
+         Value: enabled
+      Tags:
+        - Key: Name
+          Value: !Sub ${Environment}-${Platform}-ECS-CLUSTER-01
+        - Key: Instance Owner
+          Value: !Ref Platform
+        - Key: AppId
+          Value: 
+            Fn::FindInMap:
+             - ApplicationIdentity
+             - !Ref Platform
+             - AppID
+        - Key: BU
+          Value: !Ref BU
+        - Key: Environment
+          Value: !Ref Environment
+# These are the values output by the CloudFormation template. Be careful about changing any of them,
+# because of them are exported with specific names so that the other task related CF templates can use them.
+Outputs:
+  ClusterName:
+    Description: Name of the ECS Cluster
+    Value: !Ref ECSCluster
+    Export:
+      Name: !Join [':', [!Ref 'AWS::StackName', ClusterName]]

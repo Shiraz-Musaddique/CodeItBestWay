@@ -1,0 +1,93 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Creating EC2 instance
+
+Parameters:
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: Select the VPC where the server will be deployed
+  SubnetList:
+    Type: AWS::EC2::Subnet::Id
+    Description:   Select the suitable Subnet from the list
+  KeyName:
+    Description: Ec2 key pair for SSH and RDP to the server
+    Type: AWS::EC2::KeyPair::KeyName     
+  Environment:
+    Type: String
+    Description: Environment Name  
+    AllowedValues: [DEV, QA, STG, UAT, PROD, DR]
+  Platform:
+    Type: String
+    Description: Platform Name
+    AllowedValues: [Platform Name]   
+  Ec2InstanceType:
+    Type: String
+    Description: Please write Ec2 Instance Type
+  InstanceSecurityGroup:
+    Type:  List<AWS::EC2::SecurityGroup::Id>
+   # Default: [SG]
+    Description: Select Security Group from the list  
+  InstanceProfile:
+    Type: String
+    Description: Please provide the IAM role which you want to attach it to ec2 instance
+    AllowedValues: [Roles]        
+  BU:
+    Type: String
+    Default: 'ORG
+    Description: Business Unit
+  ServerRole:
+    Type: String
+    Description: Select the ServerRole
+    AllowedValues: [APP, INFRA, DB]   
+
+
+Mappings:
+  ApplicationIdentity:
+    APP:
+      AppID: Some Number to identify for billing
+       
+
+Resources:
+  EC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+        # North Virginia - us-east-1   
+        #ImageId:   - N.Virginia
+        ImageId: AMI ID
+        KeyName: !Ref KeyName
+        InstanceType: !Ref Ec2InstanceType
+        SecurityGroupIds: !Ref InstanceSecurityGroup
+        SubnetId: !Ref SubnetList
+        IamInstanceProfile: !Ref InstanceProfile
+        BlockDeviceMappings:
+        -
+          DeviceName: /dev/sda1
+          Ebs:
+            VolumeSize: 150
+        -
+          DeviceName: /dev/sdb
+          Ebs:
+            VolumeSize: 1024
+        Tags:
+        - Key: Name
+          Value: !Sub ${Environment}-${Platform}-Server-01
+        - Key: Owner
+          Value: !Ref Platform
+        - Key: AppId
+          Value: 
+            Fn::FindInMap:
+             - ApplicationIdentity
+             - !Ref Platform
+             - AppID
+        - Key: BU
+          Value: !Ref BU
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ServerRole
+          Value: !Ref ServerRole
+          
+Outputs:
+   MyInstanceId:
+     Description: EC2 Instance ID
+     Value: !Ref EC2Instance
+     
+     

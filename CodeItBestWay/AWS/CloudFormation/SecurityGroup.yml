@@ -1,0 +1,215 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Creating SecurityGroup
+Parameters:
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: The VPC in which Fargate tasks run
+  Environment:
+    Type: String
+    Description: Environment Name (DEV/QA/UAT/PROD/PREPROD/DR)
+    AllowedValues: [DEV, QA, UAT, PROD, PREPROD, DR]
+  Platform:
+    Type: String
+    AllowedValues: []
+    Description: Platform Name    
+  BU:
+    Type: String
+    Default: ''
+    Description: Business Unit
+  SupportGroup:
+    Type: String
+    Default: 'IM'
+    Description: SupportGroup Name
+  ApacheLBSGFromPortSG:
+    Type: String
+    Description: Please provide From Port Detail
+  ApacheLBSGToPortSG:
+    Type: String
+    Description: Please provide To Port Detail for Ingress Container to ALB 
+  ContainerSGIngreesALBToPort:  
+    Type: String
+    Description: Please provide To Port Detail 
+  ContainerSGIngreesALBFromPort:
+    Type: String
+    Description: Please provide From Port Detail for Ingress Container to ALB
+  WebLoadBalancerSGIngressFromApacheToPort:
+    Type: String
+    Description: Please Provide To Port Detail for WebLoadBalancer SG Ingress From Apache
+  WebLoadBalancerSGIngressFromApacheFromPort:
+    Type: String
+    Description: Please Provide from Port Detail for WebLoadBalancer SG Ingress From Apache
+  WebContainerSGIngressforALBToPort:
+    Type: String
+    Description: Provide Web Container SG Ingress To Port Detail 
+  WebContainerSGIngressforALBFromPort:
+    Type: String
+    Description: Provide Web Container SG Ingress From Port Detail
+
+Mappings:
+  ApplicationIdentity:
+    APP NAME:
+      AppID: Some APP ID
+ 
+   
+Resources:
+  # INFRA Apache Load balancer security group
+  # Allows ingress traffic on port 443 (HTTPS only)
+  ApacheLoadBalancerSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub ${Environment}-${Platform}-SG-01
+      GroupDescription: !Sub ${Platform} ALB Security Group
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: !Ref ApacheLBSGFromPortSG
+          ToPort: !Ref ApacheLBSGToPortSG
+          CidrIp: '10.128.0.0/9'
+          Description: Allow HTTPS
+      Tags:
+      - Key: Name
+        Value: !Sub ${Environment}-${Platform}-APACHE-LB-SG-01
+      - Key: Owner
+        Value: !Ref Platform
+      - Key: AppId
+        Value: 
+          Fn::FindInMap:
+           - ApplicationIdentity
+           - !Ref Platform
+           - AppID
+      - Key: BU
+        Value: !Ref BU
+      - Key: Environment
+        Value: !Ref Environment
+      - Key: Support_Group
+        Value: !Ref SupportGroup
+  # INFRA Apache container security group
+  ApacheContainerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub ${Environment}-${Platform}-APACHE-CONTAINER-SG-02
+      GroupDescription: Access to the Fargate containers for Apache
+      VpcId: !Ref VpcId
+      Tags:
+      - Key: Name
+        Value: !Sub ${Environment}-${Platform}-APACHE-CONTAINER-SG-02
+      - Key: Owner
+        Value: !Ref Platform
+      - Key: AppId
+        Value: 
+          Fn::FindInMap:
+           - ApplicationIdentity
+           - !Ref Platform
+           - AppID
+      - Key: BU
+        Value: !Ref BU
+      - Key: Environment
+        Value: !Ref Environment
+      - Key: Support_Group
+        Value: !Ref SupportGroup
+  # Ingress rule for Apache Container security group
+  # to allow traffic from Apache Load Balancer on ports 8080 and 8081
+  ApacheContainerSGIngressFromALB:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      Description: Ingress from ALB
+      GroupId: !Ref ApacheContainerSecurityGroup
+      IpProtocol: tcp
+      FromPort: !Ref ContainerSGIngreesALBFromPort
+      ToPort: !Ref ContainerSGIngreesALBToPort
+      SourceSecurityGroupId: !Ref ApacheLoadBalancerSG
+  # INFRA Web Load balancer security
+  # Allows ingress traffic on port 80 (HTTP only)
+  WebLoadBalancerSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub ${Environment}-${Platform}-WEB-LB-SG-03
+      GroupDescription: !Sub ${Platform} Web ALB Security Group
+      VpcId: !Ref VpcId
+      Tags:
+      - Key: Name
+        Value: !Sub ${Environment}-${Platform}-WEB-LB-SG-03
+      - Key: Owner
+        Value: !Ref Platform
+      - Key: AppId
+        Value: 
+          Fn::FindInMap:
+           - ApplicationIdentity
+           - !Ref Platform
+           - AppID
+      - Key: BU
+        Value: !Ref BU
+      - Key: Environment
+        Value: !Ref Environment
+      - Key: Support_Group
+        Value: !Ref SupportGroup
+  # Ingress rule for INFRA Web Load Balancer security group
+  # to allow traffic from Apache container security group on port 80
+  WebLoadBalancerSGIngressFromApache:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      Description: Ingress from INFRA Web ALB
+      GroupId: !Ref WebLoadBalancerSG
+      IpProtocol: tcp
+      FromPort: !Ref WebLoadBalancerSGIngressFromApacheFromPort
+      ToPort: !Ref WebLoadBalancerSGIngressFromApacheToPort
+      SourceSecurityGroupId: !Ref ApacheContainerSecurityGroup
+  # INFRA Web container security group
+  WebContainerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub ${Environment}-${Platform}-WEB-CONTAINER-SG-04
+      GroupDescription: Access to the Fargate containers for INFRA Web
+      VpcId: !Ref VpcId
+      Tags:
+      - Key: Name
+        Value: !Sub ${Environment}-${Platform}-WEB-CONTAINER-SG-04
+      - Key: Owner
+        Value: !Ref Platform
+      - Key: AppId
+        Value: 
+          Fn::FindInMap:
+           - ApplicationIdentity
+           - !Ref Platform
+           - AppID
+      - Key: BU
+        Value: !Ref BU
+      - Key: Environment
+        Value: !Ref Environment
+      - Key: Support_Group
+        Value: !Ref SupportGroup
+  # Ingress rule for INFRA Web Container security group
+  # to allow traffic from Web Load balancer security group on ports 8080 and 8081
+  WebContainerSGIngressFromALB:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      Description: Ingress from INFRA Web ALB
+      GroupId: !Ref WebContainerSecurityGroup
+      IpProtocol: tcp
+      FromPort: !Ref WebContainerSGIngressforALBFromPort
+      ToPort: !Ref WebContainerSGIngressforALBToPort
+      SourceSecurityGroupId: !Ref WebLoadBalancerSG
+# These are the values output by the CloudFormation template. Be careful about changing any of them,
+# because of them are exported with specific names so that the other task related CF templates can use them.
+Outputs:
+  ApacheLoadBalancerSecurityGroup:
+    Description: A security group used to allow Apache loadbalancer traffic
+    Value: !GetAtt ApacheLoadBalancerSG.GroupId
+    Export:
+      Name: !Join [':', [!Ref 'AWS::StackName', ApacheLoadBalancerSG]]
+  ApacheContainerSecurityGroup:
+    Description: A security group used to allow Fargate Apache containers to receive traffic
+    Value: !GetAtt ApacheContainerSecurityGroup.GroupId
+    Export:
+      Name: !Join [':', [!Ref 'AWS::StackName', ApacheContainerSecurityGroup]]
+  WebLoadBalancerSecurityGroup:
+    Description: A security group used to allow INFRA Web loadbalancer traffic
+    Value: !GetAtt WebLoadBalancerSG.GroupId
+    Export:
+      Name: !Join [':', [!Ref 'AWS::StackName', WebLoadBalancerSG]]
+  WebContainerSecurityGroup:
+    Description: A security group used to allow Fargate Web containers to receive traffic
+    Value: !GetAtt WebContainerSecurityGroup.GroupId
+    Export:
+      Name: !Join [':', [!Ref 'AWS::StackName', WebContainerSecurityGroup]]
+
