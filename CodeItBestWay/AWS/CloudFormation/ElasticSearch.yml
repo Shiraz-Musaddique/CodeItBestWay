@@ -1,0 +1,127 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: This stack will create elastic search domain
+Parameters:
+  Environment:
+    Type: String
+    Description: Environment Name (DEV/QA/BETA/STG/PREPROD/PROD/DR)
+    AllowedValues: ['DEV', 'QA', 'BETA', 'STG', 'PREPROD', 'PROD', 'DR']
+  Platform:
+    Type: String
+    Default: 'APP-NAME'
+    Description: Platform Name
+  AppID:
+    Type: String
+    Default: 'APP-UNIQUE-ID' 
+    Description: AppID
+  BU:
+    Type: String
+    Default: 'ORG'
+    Description: BU Name
+  SupportGroup:
+    Type: String
+    Default: 'infrastructure'  
+    Description: SupportGroup Name
+Mappings:
+  SubnetSelection: 
+    DEV:
+      SubnetList: subnet-58d,subnet-22b
+    QA:
+      SubnetList: subnet-1e1,subnet-79,subnet-8de,subnet-eef,subnet-f5,subnet-f6
+    BETA:
+      SubnetList: subnet-cf7,subnet-da2,subnet-0ed2
+    STG:
+      SubnetList: subnet-82a,subnet-681
+    PREPROD:
+      SubnetList: subnet-035b1,subnet-05381,subnet-0dee
+    PROD: 
+      SubnetList: subnet-157,subnet-82e,subnet-e642   
+  VPCNames:
+    DEV:
+      vpcid: vpc-3e2
+    QA:
+      vpcid: vpc-d65
+    BETA:
+      vpcid: vpc-c59
+    STG: 
+      vpcid: vpc-9f4
+    PREPROD:
+      vpcid: vpc-057
+    PROD:
+      vpcid: vpc-1c
+    DR1:
+      vpcid: vpc-0da
+    DR2: 
+      vpcid: vpc-40   
+
+Resources:
+  APPECSSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub '${Environment}-${Platform}-ES-SG-02'
+      GroupDescription:  Elasticsearch Group
+      VpcId: !FindInMap
+        - VPCNames
+        - !Ref Environment
+        - vpcid 
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: '443'
+          ToPort: '443'
+          CidrIp: '10.0.0.0/8' 
+
+  ElasticsearchDomain:
+    Type: 'AWS::Elasticsearch::Domain'
+    Properties:
+      DomainName: 'dev-app-es-02'
+      ElasticsearchClusterConfig:
+        DedicatedMasterEnabled: 'true'
+        InstanceCount: '2'
+        ZoneAwarenessConfig:
+          AvailabilityZoneCount: 2
+        ZoneAwarenessEnabled: 'true'
+        InstanceType: r5.large.elasticsearch
+        DedicatedMasterType: r5.large.elasticsearch
+        DedicatedMasterCount: '3'
+      ElasticsearchVersion: 7.4
+      EBSOptions:
+        EBSEnabled: true
+        VolumeSize: 100
+        VolumeType: gp2
+      EncryptionAtRestOptions:
+        Enabled: 'true' 
+        KmsKeyId: '12739c25-6a4d' 
+      NodeToNodeEncryptionOptions:
+        Enabled: 'true' 
+      AccessPolicies:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: '683938290392'
+            Action: 'es:*'
+            Resource: 'arn:aws:es:us-east-1:683938290392:domain/dev-app-es-02/*'
+      VPCOptions:
+        SubnetIds: !Split [",", !FindInMap [ SubnetSelection, !Ref Environment, SubnetList] ]
+        SecurityGroupIds:
+          - !Ref APPECSSG  
+
+      Tags:
+        - Key: Name
+          Value: 'dev-app-es-02'
+        - Key: Owner
+          Value: !Ref 'Platform'
+        - Key: AppId
+          Value: !Ref 'AppID'
+        - Key: BU
+          Value: !Ref 'BU'
+        - Key: Environment
+          Value: !Ref 'Environment'
+        - Key: Support_Group
+          Value: !Ref 'SupportGroup'
+        - Key: Used_For
+          Value: 'ElasticSearch'                
+
+Outputs: 
+  DomainArn:
+    Value: !GetAtt ElasticsearchDomain.DomainArn
+    Description: ARN of ElasticSearch Domain
