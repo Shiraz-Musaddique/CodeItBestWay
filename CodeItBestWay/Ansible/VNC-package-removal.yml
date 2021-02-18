@@ -1,0 +1,46 @@
+---
+- hosts: "{{ HOSTS }}"
+  become: true
+  tasks:
+  
+  
+   - name: Grep the VNC Package Installed in the server
+     shell: rpm -qa | grep -i vnc
+     register: VNC_Package
+     ignore_errors: yes
+    
+  
+   - debug:
+       msg: "{{ VNC_Package }}"
+     ignore_errors: yes
+      
+   - name: Stopped VNC service
+     service:
+      name: system-vncserver.slice
+      state: stopped
+      enabled: no
+     ignore_errors: yes
+     
+   - name: Stopped VNC service
+     service:
+      name: vncserver@:1.service
+      state: stopped
+      enabled: no
+     ignore_errors: yes
+     
+   - name: Stopped VNC service
+     service:
+      name: vncserver@:2.service
+      state: stopped 
+      enabled: no
+     ignore_errors: yes
+   
+   - name: Cleaning Yum old Transactions
+     shell: yum clean all
+     ignore_errors: yes
+     
+   - name: Removing the VNC Packages
+     yum:
+      name: "{{ VNC_Package.stdout_lines }}"
+      state: absent
+     ignore_errors: yes

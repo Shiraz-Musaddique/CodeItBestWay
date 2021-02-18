@@ -1,0 +1,327 @@
+---
+- hosts: "{{ HOSTS }}"
+  become: yes
+  tasks: 
+
+
+       - name: Displaying The IP address
+         shell: hostname -i
+         register: IP
+ 
+       - name: Getting region details
+         shell: curl -s http://169.254.169.254/latest/dynamic/instance-identity/document | grep -i  region | awk '{print $3}' | sed -e 's/\(\"[^",]\+\),\([^",]*\)/\1 \2/g' -e 's/\"//g' | tr ',' '\n'
+         register: REGION     
+
+       - name: Getting Instance Name
+         shell: AWS_INSTANCE_ID=`curl -s http://169.254.169.254/latest/meta-data/instance-id` ; /usr/local/bin/aws ec2 describe-tags --region {{ REGION.stdout  }}  --filters "Name=resource-id,Values=$AWS_INSTANCE_ID" "Name=key,Values=Name"  | grep -i Value | awk '{print $2}' | sed -e 's/\(\"[^",]\+\),\([^",]*\)/\1 \2/g' -e 's/\"//g' | tr ',' '\n'
+         register: Ins_name
+
+       - name: LDAP setup check
+         shell: if (( $(ps -ef | grep -v grep | grep sssd | wc -l) > 0 )); then echo "Yes"; else echo "No"; fi
+         register: LDAP
+       
+       - name: Nexpose service check
+         shell: if (( $(ps -ef | grep -v grep | grep ir_agent | wc -l) > 0 )); then echo "Yes"; else echo "No"; fi 
+         register: Rapid7
+
+       - name: Checking the Service Now User
+         shell: if (( $(cat /etc/sudoers | grep -i "svc-servicenow" | wc -l) > 0 )); then echo "Yes"; else echo "No"; fi 
+         register: Service_now
+      
+       - name: Checking Datadog service
+         shell: if (( $(ps -ef | grep -v grep | grep datadog-agent | wc -l) > 0 )); then echo "Yes"; else echo "No"; fi
+         register: Datadog  
+
+
+       - name: Checking CloudWatch
+         shell: if (( $(ps -ef | grep -v grep | grep awslogs | wc -l) > 0 )); then echo "Yes"; else echo "No"; fi
+         register: CloudWatch  
+
+       - name: Checking the Splunk service
+         shell: if (( $(ps -ef | grep -v grep | grep splunk | wc -l) > 0 )); then echo "Yes"; else echo "No"; fi 
+         register: splunk   
+
+       - name: Postfix Service Check
+         shell: if (( $(ps -ef | grep -v grep | grep postfix | wc -l) > 0 )); then echo "Yes"; else echo "No"; fi
+         register: Postfix
+
+       - name: Checking the SMTP relay
+         shell: cat /etc/postfix/main.cf | grep -i relayhost | tail -1
+         register: SMTP_relay
+
+       - name: Time Zone Check
+         shell: timedatectl | grep "Time zone"
+         register: time_zone  
+
+       - name: Checking AWS CLI
+         shell: /usr/local/bin/aws --version
+         register: aws_cli
+ ###### pip
+       - name: Checking pip and Python version
+         shell: pip --version
+         register: pip
+         ignore_errors: yes
+############
+       - name: Checking the kernel
+         shell: uname -r
+         register: Kernel
+
+       - name: Checking Apache package
+         shell: rpm -qa | grep -i  htttpd
+         register: Apache
+         ignore_errors: yes 
+ 
+       - name: Checking Tomcat
+         shell: rpm -qa | grep -i sptomcat
+         register: Tomcat
+         ignore_errors: yes
+
+       - name: Checking resolv.conf file entries
+         shell: cat /etc/resolv.conf | grep -i nameserver | head -1
+         register: nameserver
+  
+       - name: Listing down enable repositories
+         shell: yum repolist enabled  | sed 's/\<plugins\>//g' | sed 's/\<Loaded\>//g'| sed 's/\<repo\>//g'|sed 's/\<repolist\>//g'|sed 's/\<id\>//g' | awk '{print $1}'  | sed '$!s/$/,/' 
+         register: enablerepo
+
+       - name: checking SSM Agent service
+         shell: if (( $(ps -ef | grep -v grep | grep amazon-ssm-agent | wc -l) > 0 )); then echo "Yes"; else echo "No"; fi
+         register: SSM
+####AWS Agent / Inspector
+       - name: checking AWS Inspector Agent service
+         shell: if (( $(ps -ef | grep -v grep | grep awsagent | wc -l) > 0 )); then echo "Yes"; else echo "No"; fi
+         register: inspector
+#######
+
+       - name: Checking the Cloud-init service
+         shell: if (( $(sudo systemctl status cloud-init | grep -v grep | grep dead | wc -l) > 0 )); then echo "No"; else echo "Yes"; fi
+         register: cloud
+
+       - name: checking Cybereason service
+         shell: if (( $(ps -ef | grep -v grep | grep cybereason | wc -l) > 0 )); then echo "Yes"; else echo "No"; fi
+         register: Cyber
+
+       - name: Checking /tmp mount options
+         shell: mount | grep -i /tmp
+         register: tmp
+
+       - name: Attached IAM role to the instance
+         shell: curl -s http://169.254.169.254/latest/meta-data/iam/info | grep -i InstanceProfileArn|sed -e 's/\(\"[^",]\+\),\([^",]*\)/\1 \2/g' -e 's/\"//g' | awk '{print $3}' | cut -d':' -f6
+         register: IAM 
+
+       - name: Attached Security Group
+         shell: curl -s http://169.254.169.254/latest/meta-data/security-groups | sed '$!s/$/,/'
+         register: SG
+##########
+       - name: Instance ID
+         shell: curl -s http://169.254.169.254/latest/meta-data/instance-id
+         register: Ins_ID
+
+       - name: AMI ID
+         shell: curl -s http://169.254.169.254/latest/meta-data/ami-id
+         register: AMI_ID
+
+       - name: Instance Type
+         shell: curl -s http://169.254.169.254/latest/meta-data/instance-type
+         register: ins_type
+
+
+       - name: Biling product
+         shell: curl -s http://169.254.169.254/latest/dynamic/instance-identity/document | grep -i  billingProducts | awk '{print $4}' | sed -e 's/\(\"[^",]\+\),\([^",]*\)/\1 \2/g' -e 's/\"//g'
+         register: BP
+
+       - name: Availability Zone
+         shell: curl -s http://169.254.169.254/latest/meta-data/placement/availability-zone
+         register: az
+
+ 
+       - name: SELINUX Status
+         shell: cat /etc/selinux/config | grep -i SELINUX= | tail -1 | cut -c9-18
+         register: sestatus
+  
+       - name: Checking SSHD config - AllowGoups
+         shell: cat /etc/ssh/sshd_config | grep -i AllowGroups | head -1
+         register: SSHD_Group
+
+       - name: Checking NFS/EFS Mounts
+         shell: MOUNTS=`df -hT | grep -i  nfs4 | awk '{print $7}'` ; for i in $MOUNTS; do mount | grep -i $i; done
+         register: EFS
+
+       - name: Checking  Mount Options
+         shell: cat /etc/fstab | grep -i apps 
+         register: Mount_options
+         ignore_errors: yes
+
+#======================================================================================================================#
+
+       - mail:
+          host: mail.spglobal.com #localhost
+          username: indexinfraMBX@spglobal.com
+          password:         
+          from: indexinfraMBX@spglobal.com
+          to: indexinfraMBX@spglobal.com
+          cc: shirazmusaddique@gmail.com
+          subject: Post Checks of {{ IP.stdout  }} - {{ Ins_name.stdout  }}
+          subtype: html 
+          body: |
+              <!DOCTYPE html>
+              <html>
+              <head>
+              <style>
+              table {
+                 fond-family: times new roman, sans-serif;
+                 border-collapse: collapse;
+                 width: 100%
+              }
+              td, th {
+                border: 1px solid  #17202a;
+                text-align: left;
+                padding: 6px;
+              }  
+              tr, th:nth-child(even) {
+                background-color: #7fb3d5;
+                bottom-top-color: #FEB9B9;
+              }    
+              </style>
+              </head>
+              <body>
+              <h2> {{ IP.stdout  }} - {{ Ins_name.stdout  }} Status Check </h2>
+              <table>
+                <tr>
+                  <th>Checks</th>
+                  <th>Status</th>
+                </tr>
+                <tr>
+                  <td>Instance ID</td>
+                  <td> {{ Ins_ID.stdout  }} </td>
+                </tr>
+                <tr>
+                  <td>AMI ID</td>
+                  <td> {{ AMI_ID.stdout  }} </td>
+                </tr>
+                <tr>
+                  <td>Instance Type</td>
+                  <td> {{ ins_type.stdout  }} </td>
+                </tr>
+                <tr>
+                  <td>Availability Zone</td>
+                  <td> {{ az.stdout  }} </td>
+                </tr>
+                <tr>
+                  <td>Billing Product</td>
+                  <td> {{ BP.stdout  }} </td>
+                </tr>
+                <tr>
+                  <td>IAM Role</td>
+                  <td> {{ IAM.stdout  }} </td>
+                </tr>
+                <tr>
+                  <td>Security Groups</td>
+                  <td> {{ SG.stdout  }} </td>
+                </tr>
+                <tr>
+                  <td> SSSD service running </td>
+                  <td> {{ LDAP.stdout  }} </td>
+                </tr>
+                <tr>
+                  <td> Rapid7 Agent service running </td>
+                  <td> {{ Rapid7.stdout  }} </td>
+                </tr>
+                <tr>
+                  <td> Datadog Agent Service running </td>
+                  <td> {{ Datadog.stdout  }} </td>
+                </tr>
+                <tr>
+                  <td> Splunk Service running </td>
+                  <td> {{ splunk.stdout  }} </td>
+                </tr>
+                <tr>
+                  <td> CloudWatch Service running </td>
+                  <td> {{ CloudWatch.stdout }} </td>
+                </tr>
+                <tr>
+                  <td> Postfix Service running </td>
+                  <td> {{ Postfix.stdout  }}  </td>
+                </tr>
+                <tr>
+                  <td> SSM Agent Service running </td>
+                  <td> {{ SSM.stdout  }}  </td>
+                </tr>
+                <tr>
+                  <td> AWS Inspector Agent Service running </td>
+                  <td> {{ inspector.stdout  }}  </td>
+                </tr>
+                <tr>
+                  <td> Cloud-init Service running </td>
+                  <td> {{ cloud.stdout  }}  </td>
+                </tr>
+                <tr>
+                  <td> Cybereason Service running </td>
+                  <td> {{ Cyber.stdout  }}  </td>
+                </tr>
+                <tr>
+                  <td> SELinux Mode </td>
+                  <td> {{ sestatus.stdout  }}  </td>
+                </tr>    
+                <tr>
+                  <td> SMTP </td>
+                  <td> {{ SMTP_relay.stdout  }} </td>
+                </tr>
+                <tr>
+                  <td> Service Now Entry </td>  
+                  <td> {{ Service_now.stdout  }} </td>
+                </tr>         
+                <tr>
+                  <td> Resolve.conf Entry </td>
+                  <td> {{ nameserver.stdout  }} </td>
+                </tr>
+                <tr>
+                  <td> Time Zone set on server </td>
+                  <td> {{ time_zone.stdout  }}  </td>
+                </tr>
+                <tr>
+                  <td> /tmp mount options  </td>
+                  <td> {{ tmp.stdout  }}  </td>
+                </tr>
+                <tr>
+                  <td> aws cli version </td>
+                  <td> {{ aws_cli.stderr  }} </td>    
+                </tr> 
+                <tr>
+                  <td> pip and python version </td>
+                  <td> {{ pip.stdout  }} </td>
+                </tr>
+                <tr>
+                  <td> Kernel Version </td>
+                  <td> {{ Kernel.stdout  }} </td>
+                </tr>
+                <tr>
+                  <td> Apache Version </td>
+                  <td> {{ Apache.stdout  }} </td>
+                </tr>
+                <tr>
+                  <td> Tomcat Version </td>
+                  <td> {{ Tomcat.stdout  }} </td>
+                </tr>
+                <tr>
+                  <td> Enable Repositories </td>
+                  <td> {{ enablerepo.stdout  }} </td>
+                </tr>
+                <tr>
+                  <td> SSHD Allow Groups </td>
+                  <td> {{ SSHD_Group.stdout  }} </td>
+                </tr>
+                <tr>
+                  <td> EFS/NFS Mounts </td>
+                  <td> {{ EFS.stdout  }} </td>
+                </tr>
+                <tr>
+                  <td> /local/apps Mount  </td>
+                  <td> {{ Mount_options.stdout  }} </td>
+                </tr>
+  
+  
+              </table>
+  
+              </body> 
+              </html>     

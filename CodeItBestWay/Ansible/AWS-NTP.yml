@@ -1,0 +1,24 @@
+---
+- hosts: "{{ HOSTS }}"
+  become: true
+  tasks:
+
+  - name: "Adding Chrony Server IP"
+    lineinfile:
+        path: /etc/chrony.conf
+        insertafter: "server "
+        backup: yes
+        line: 'server 169.254.169.123 iburst prefer minpoll 4 maxpoll 4'
+
+  - name: Restarting Chronyd Service
+    systemd:
+      name: "chronyd"
+      state: restarted
+
+
+  - name: Checking the entries into the file
+    shell: cat /etc/chrony.conf | grep -i server
+
+
+  - name: Checking the Chrony tracks
+    shell: chronyc sources -v

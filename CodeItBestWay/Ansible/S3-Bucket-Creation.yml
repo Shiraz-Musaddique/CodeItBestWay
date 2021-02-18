@@ -1,0 +1,87 @@
+---
+- name: "Playbook for S3"
+  hosts: localhost
+  gather_facts: false
+  become: no
+  vars:
+    #BUCKETLIST
+    #ENV:
+    #APPPLATFORM:
+    #REGION:
+    DELEGATEHOST: infra.server.com
+  tasks:
+    - set_fact:
+        ASSUMEROLE: 'arn:aws:iam::Acct-Num:role/DEV-EC2-ROLE'
+        SCRIPTHOST: infra.server.com
+      when: ENV == "DEV" or ENV == "QA" or ENV == "UAT" or  ENV == "STG" or ENV == "NONPROD"
+      
+    - set_fact:
+        ASSUMEROLE: 'arn:aws:iam::Acct-Num:role/PROD-EC2-ROLE'
+        SCRIPTHOST: prod.infra.server.com
+      when: ENV == "PROD"  or ENV == "DR1"
+      
+    - set_fact:
+        ASSUMEROLE: 'arn:aws:iam::Acct-Num:role/DR-EC2-ROLE'
+        SCRIPTHOST: dr.infra.server.com
+      when: ENV == "DR" 
+      
+    - name: Getting Session of Assumed Role
+      sts_assume_role:
+          region: "{{ REGION }}"
+          role_arn: "{{ ASSUMEROLE }}"
+          role_session_name: 'org-provision-s3'
+      delegate_to: "{{ DELEGATEHOST }}"
+      register: assumed_role
+      
+    - name: create S3 Buckets
+      s3_bucket:
+        aws_access_key: "{{ assumed_role.sts_creds.access_key }}"
+        aws_secret_key: "{{ assumed_role.sts_creds.secret_key }}"
+        security_token: "{{ assumed_role.sts_creds.session_token }}"
+        name: "{{ item }}"
+        region: "{{ REGION }}"
+        state: present
+        tags:
+            Name: "{{ item  }}"
+            Owner: "{{ APPPLATFORM }}"
+        policy: '{
+                "Version": "2012-10-17",
+                "Id": "Policy{{ 9999999999999 |random (start=1111111111111) }}",
+                "Statement": [
+                    {
+                        "Sid": "Stmt{{ 9999999999999 |random (start=1111111111111) }}",
+                            "Effect": "Deny",
+                                "Principal": "*",
+                                    "Action": "s3:*",
+                    "Resource": "arn:aws:s3:::{{ item }}/*",
+                    "Condition": {
+                        "Bool": {
+                        "aws:SecureTransport": "false"
+                    }
+                }
+                }
+                ]
+                }'
+      with_items: "{{ BUCKETLIST }} "
+      
+    - name: update S3 encryption
+      shell: aws s3api put-bucket-encryption --bucket "{{ item }}"   --server-side-encryption-configuration file://s3-encryption.json
+      args:
+        chdir: /tmp/
+      delegate_to: "{{ SCRIPTHOST }}"
+      with_items: "{{ BUCKETLIST }} "
+     
+     
+     
+ 
+# file://s3-encryption.json 
+#{
+#            "Rules": [
+#              {
+#                "ApplyServerSideEncryptionByDefault": {
+#                  "SSEAlgorithm": "AES256"
+#                }
+#              }
+#            ]
+#          }
+     
