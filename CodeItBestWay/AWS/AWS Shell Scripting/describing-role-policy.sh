@@ -1,7 +1,7 @@
 #!/bin/bash
 #This script will give provide you the policies attached to the role and also their permissions.
 #This script needs aws-cli v2 installed mandatory in the system
-# you need to run this script 2 times everytime  they have to provide role name. it will create one file with policy and second time run you have to redirect the output to the file.
+# you need to run this script 2 times everytime you run the script you have to provide role name. it will create one file with policy and second time run you have to redirect the output to the file.
 
 
 read -p "Please Enter AWS ROLE Name and see the game: " rolename
