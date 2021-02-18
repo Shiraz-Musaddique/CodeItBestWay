@@ -130,7 +130,7 @@ Parameters:
   KmsKeyId:
     Description: KMS Key to use
     Type: String
-    Default: arn:aws:kms:us-west-2:699183880494:key/3c7f5842-d7b2-4f73-99e7-0cc9b6be8630
+    Default: arn:aws:kms:us-west-2:ACCT-NUM:key/3c7f5842-d7b2-4f73-99e7-0fhd53kjh
 
   StorageType:
     Type: String
