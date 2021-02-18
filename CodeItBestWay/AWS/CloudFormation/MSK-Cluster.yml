@@ -1,0 +1,89 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: This stack creates infra resources for MSK
+Parameters:
+  Environment:
+    Type: String
+    Description: Environment Name (DEV/QA/BETA/STG/PREPROD/PROD/DR)
+    AllowedValues: ['DEV', 'QA', 'BETA', 'STG','PREPROD','PROD', 'DR']
+  Platform:
+    Type: String
+    Default: 'APP-NAME'
+    Description: Platform Name
+  AppId:
+    Type: String
+    Default: 'APP-UNIQUE-ID'
+    Description: AppID
+  BU:
+    Type: String
+    Default: 'ORG'
+    Description: BU Name
+  SupportGroup:
+    Type: String
+    Default: 'Infrastructure Team'
+    Description: SupportGroup Name
+  QAPrivateSubnet1:
+    Type: String
+    Default: 'subnet-12345'
+  QAPrivateSubnet2:
+    Type: String
+    Default: 'subnet-67891'
+  QAPrivateSubnet3:
+    Type: String
+    Default: 'subnet-101112'
+  QAPrivateSubnet4:
+    Type: String
+    Default: 'subnet-121314' 
+  MSKSecurityGroup:
+    Type: String
+    Default: sg-0ab7
+    Description: Security Group
+  QAEBSKey:
+    Type: String
+    Default: EBS-KEY-ARN
+  PrivateCertificate:
+    Type: String
+    Default: acm-pca-Private-certificate-ARN    
+        
+
+Resources:
+  ArrowMSKCluster:
+    Type: 'AWS::MSK::Cluster'
+    Properties:
+      ClusterName: QA-AP-NAME-MSK-01
+      KafkaVersion: 2.2.1
+      NumberOfBrokerNodes: 3
+      EncryptionInfo:
+        EncryptionAtRest:
+          DataVolumeKMSKeyId: !Ref QAEBSKey
+        EncryptionInTransit:
+          ClientBroker: TLS
+          InCluster: true
+      ClientAuthentication:
+        Tls:
+          CertificateAuthorityArnList:
+            - !Ref PrivateCertificate
+      Tags:
+        Name: QA-${Platform}-MSK-01
+        Owner: !Ref Platform
+        AppId: !Ref AppId
+        BU: DJI
+        Environment: QA
+        Support_Group: !Ref SupportGroup
+        Used_For: Access Web application
+      BrokerNodeGroupInfo:
+        BrokerAZDistribution: DEFAULT
+        InstanceType: kafka.m5.large
+        SecurityGroups:
+          - !Ref MSKSecurityGroup
+        StorageInfo:
+          EBSStorageInfo:
+            VolumeSize: 100
+        ClientSubnets:
+          - !Ref QAPrivateSubnet1
+          - !Ref QAPrivateSubnet2          
+          - !Ref QAPrivateSubnet3
+
+Outputs:          
+  ArrowMSKClusterArn:
+     Description: The Arn for the MSKMMCluster1 MSK cluster     
+     Value: !Ref ArrowMSKCluster
