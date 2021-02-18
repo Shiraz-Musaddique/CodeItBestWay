@@ -1,0 +1,214 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: This template allows to provision RDS instances 
+
+  
+Parameters:
+  Environment:
+    Type: String
+    Description: Environment Name (DEV/QA/BETA/STG/PREPROD/PROD/DR1/DR2)
+    AllowedValues: [DEV,QA,QADR,BETA,STG,PREPROD,PROD,DR1,DR2]
+
+  Platform:
+    Type: String
+    Description: Platform Name
+    AllowedValues: [APP]
+
+  AppID:
+    Type: String
+    Default: APP-UNIQUE-ID
+    Description: AppID
+
+  BU:
+    Type: String
+    Default: ORG
+    Description: Business Unit
+
+  SupportGroup:
+    Type: String
+    Default: infrastructure
+    Description: SupportGroup Name
+
+  AllocatedStorage:
+    Description: The allocated storage size, specified in gigabytes (GB).
+    Type: String
+    AllowedPattern: "^([2-9]?[0-9]{1}|[0-9]{3,4}|1[0-5]?[0-9]{3}|16[0-2]?[0-9]{2}|163[0-7]?[0-9]{1}|1638[0-4]?)$"
+    ConstraintDescription: "Value must be a valid number between 20-16384."
+    Default: 100
+
+  AllowMajorVersionUpgrade:
+    Description: If you update the EngineVersion property to a version that is different from the DB instances current major version, set this property to true.
+    Type: String
+    AllowedValues: [true, false]
+    ConstraintDescription: "Value must be boolean value."
+    Default: false
+
+  AutoMinorVersionUpgrade:
+    Description: Indicates that minor engine upgrades are applied automatically to the DB instance during the maintenance window. The default value is true.
+    Type: String
+    AllowedValues: [true, false]
+    Default: true
+    ConstraintDescription: "Value must be boolean value."
+
+  BackupRetentionPeriod:
+   Description: The number of days during which automatic DB snapshots are retained.
+   Type: String
+   AllowedPattern: "^[0-9]{1,3}$"
+   ConstraintDescription: "Value must be a valid number between 0-999."
+   Default: 7
+
+  DBInstanceClass:
+    Description: The name of the compute and memory capacity classes of the DB instance.
+    Type: String
+    Default: db.m5.xlarge
+    AllowedValues: [db.m5.large,db.m5.xlarge,db.m5.2xlarge,db.m5.4xlarge,db.m5.8xlarge,db.m5.12xlarge,db.m5.16xlarge,db.m5.24xlarge,db.r5.2xlarge]
+
+  DBName:
+    Description: The name of the database inside the instance.
+    Type: String
+    Default: dbname
+
+  Engine:
+    Description: The name of the database engine to be used for this instance.
+    Type: String
+    Default: mysql
+    AllowedValues: [mysql, mariadb, postgres,oracle-ee]
+    ConstraintDescription: "Please specify either a mysql, mariadb, or postgres engine for the RDS instance."
+
+  DBSubnetGroupName:
+    Description: A DB subnet group to associate with the DB instance. 
+    Type: String
+    Default: qa-usw2-pvt-subnet-group
+
+
+  MasterUsername:
+    Description: The master user name for the DB instance.
+    Type: String
+    Default: dbuser
+
+  MultiAZ:
+    Description: Specifies if the database instance is a multiple Availability Zone deployment.
+    Type: String
+    AllowedValues: [true, false]
+    Default: false
+    ConstraintDescription: "Value must be boolean value."
+
+  MasterUserPassword:
+    Description: The master user password for the DB instance.
+    Type: String
+
+  PreferredMaintenanceWindow:
+    Description: Maintenance Window.
+    Type: String
+    Default: fri:09:19-fri:09:49
+
+  DeletionProtection:
+    Description: A value that indicates whether the DB cluster has deletion protection enabled. The database can be deleted when deletion protection is enabled. By default, deletion protection is disabled.
+    Type: String
+    Default: No
+
+  PreferredBackupWindow:
+    Description: Backup Window.
+    Type: String
+    Default: 08:00-09:00
+
+  EngineVersion:
+    Description: The version number of the database engine to use.
+    Type: String
+    #AllowedValues: [8.0.20,8.0.19,5.7.30,19.0.0.0.ru-2020-04.rur-2020-04.r1]
+
+  VPCSecurityGroups:
+    Description: Specifies if the database instance is a multiple Availability Zone deployment - usw2 sg-02134f84136ae196d.
+    Type: List<AWS::EC2::SecurityGroup::Id>
+    ConstraintDescription: "Please provide valid ids for the security group(s)."
+
+  DBInstanceIdentifier:
+    Description: A name for the DB instance.
+    Type: String
+    Default: qausw2app01
+
+  KmsKeyId:
+    Description: KMS Key to use
+    Type: String
+    Default: arn:aws:kms:us-west-2:699183880494:key/3c7f5842-d7b2-4f73-99e7-0cc9b6be8630
+
+  StorageType:
+    Type: String
+    Default: gp2
+    AllowedValues: [gp2, io1]
+
+  DBParameterGroupName:
+    Type: String
+    Default: qa-usw2-app-mysql-8-param-group
+
+  OptionGroupName:
+    Type: String
+    Default: qa-usw2-app-option-group-01
+
+  MaxAllocatedStorage:
+    Type: String
+    Default: 200
+    Description: The upper limit to which Amazon RDS can automatically scale the storage of the DB instance.
+
+  #EnablePerformanceInsights:
+  #  Type: String
+  #  AllowedValues: [Yes, No]
+  #  Description: A value that indicates whether to enable Performance Insights for the DB instance.
+
+ # PerformanceInsightsKMSKeyId:
+  #  Type: String
+  #  Description: The AWS KMS key identifier for encryption of Performance Insights data. The KMS key ID is the Amazon Resource Name (ARN), KMS key identifier, or the KMS key alias for the KMS encryption key.
+
+  #PerformanceInsightsRetentionPeriod:
+  #  Type: String
+  #  Description: The amount of time, in days, to retain Performance Insights data. Valid values are 7 or 731
+  
+
+    
+    
+Resources:
+  RDSInstance:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      AllocatedStorage: !Ref AllocatedStorage
+      AllowMajorVersionUpgrade: !Ref AllowMajorVersionUpgrade
+      AutoMinorVersionUpgrade: !Ref AutoMinorVersionUpgrade
+      BackupRetentionPeriod: !Ref BackupRetentionPeriod
+      DBInstanceClass: !Ref DBInstanceClass
+      DBName: !Ref DBName
+      Engine: !Ref Engine
+      EngineVersion: !Ref EngineVersion
+      DBSubnetGroupName: !Ref DBSubnetGroupName
+      VPCSecurityGroups: !Ref VPCSecurityGroups
+      MasterUsername: !Ref MasterUsername
+      MasterUserPassword: !Ref MasterUserPassword
+      PreferredMaintenanceWindow: !Ref PreferredMaintenanceWindow
+      PreferredBackupWindow: !Ref PreferredBackupWindow
+      MultiAZ: !Ref MultiAZ
+      StorageEncrypted: Yes
+      DeletionProtection: !Ref DeletionProtection
+      CopyTagsToSnapshot: Yes
+      DeleteAutomatedBackups: Yes
+      PubliclyAccessible: No
+      StorageType: !Ref StorageType
+      DBInstanceIdentifier: !Ref DBInstanceIdentifier
+      KmsKeyId: !Ref KmsKeyId
+      DBParameterGroupName: !Ref DBParameterGroupName
+      OptionGroupName: !Ref OptionGroupName
+      MaxAllocatedStorage: !Ref MaxAllocatedStorage
+
+      Tags:
+      - Key: Name
+        Value: !Sub ${Environment}-${Platform}-${DBInstanceIdentifier}-01
+      - Key: Owner
+        Value: !Ref Platform
+      - Key: AppID
+        Value: !Ref AppID
+      - Key: BU
+        Value: !Ref BU
+      - Key: Environment
+        Value: !Ref Environment
+      - Key: Support_Group
+        Value: !Ref SupportGroup
+        
+  
