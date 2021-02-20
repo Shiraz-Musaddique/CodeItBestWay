@@ -156,11 +156,11 @@
 
        - mail:
           host: mail.spglobal.com #localhost
-          username: indexinfraMBX@spglobal.com
+          username: shirazmusaddique@gmail.com
           password:         
-          from: indexinfraMBX@spglobal.com
-          to: indexinfraMBX@spglobal.com
-          cc: shirazmusaddique@gmail.com
+          from: shirazmusaddique@gmail.com
+          to: shirazmusaddique11@gmail.com
+          cc: shirazmusaddique88@gmail.com
           subject: Post Checks of {{ IP.stdout  }} - {{ Ins_name.stdout  }}
           subtype: html 
           body: |
