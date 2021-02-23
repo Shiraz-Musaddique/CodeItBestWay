@@ -155,7 +155,7 @@
 #======================================================================================================================#
 
        - mail:
-          host: mail.spglobal.com #localhost
+          host: mail.gmail.com #localhost
           username: shirazmusaddique@gmail.com
           password:         
           from: shirazmusaddique@gmail.com
