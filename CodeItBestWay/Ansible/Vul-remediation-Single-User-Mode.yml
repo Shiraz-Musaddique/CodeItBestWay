@@ -1,0 +1,11 @@
+---
+- hosts: "{{ HOSTS }}"
+  become: true
+  tasks:
+  
+  - name: Adding the Single User Mode Option in /etc/sysconfig/init file
+    blockinfile:
+      path: /etc/sysconfig/init
+      block: |
+         SINGLE=/sbin/sulogin
+         PROMPT=no
