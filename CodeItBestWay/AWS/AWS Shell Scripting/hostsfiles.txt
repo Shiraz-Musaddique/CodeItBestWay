@@ -1,0 +1,10 @@
+vol-049cddf89c13bf505 /dev/sda1
+
+
+######Physical Hosts################
+10.233.235.141  vmc1034dpbw01.hanareporting.apps.carrier.com    vmc1034dpbw01
+10.233.235.206  vmc1034dpbw02.hanareporting.apps.carrier.com    vmc1034dpbw02
+10.233.234.96   vmc1034apbw01.hanareporting.apps.carrier.com    vmc1034apbw01
+10.233.234.172  vmc1034apbw02.hanareporting.apps.carrier.com    vmc1034apbw02
+10.233.234.41   vmc1034apbw03.hanareporting.apps.carrier.com    vmc1034apbw03
+10.233.234.161  vmc1034apbw04.hanareporting.apps.carrier.com    vmc1034apbw04
